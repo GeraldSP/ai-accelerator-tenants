@@ -74,16 +74,16 @@ clone_upstream() {
   git -C "${WORK_DIR}" checkout FETCH_HEAD
 }
 
-# quay.io/minio/* is no longer anonymously pullable (401). Use public Chainguard
-# builds (verified pullable from this cluster). Digests pinned from probe.
+# quay.io/minio/* is no longer anonymously pullable (401).
+# Use public coollabsio MinIO image (includes minio server + mc + /bin/sh).
 patch_minio_images() {
-  local minio_img="${MINIO_IMAGE:-cgr.dev/chainguard/minio:latest@sha256:d88920d6a50bd0b088223b688be3b76c63e6205dbe494437f67ba1240ea12880}"
-  local mc_img="${MINIO_MC_IMAGE:-cgr.dev/chainguard/minio-client:latest@sha256:72f9978d415ea8294d78051fb3aee2fd258d449237633f77f100b5367bb5225d}"
+  local minio_img="${MINIO_IMAGE:-ghcr.io/coollabsio/minio:RELEASE.2025-10-15T17-29-55Z}"
+  local mc_img="${MINIO_MC_IMAGE:-ghcr.io/coollabsio/minio:RELEASE.2025-10-15T17-29-55Z}"
   local dep="${WORK_DIR}/deploy/observability/minio/templates/deployment.yaml"
   local init="${WORK_DIR}/deploy/observability/minio/templates/bucket-init-job.yaml"
   [[ -f "${dep}" ]] || die "missing ${dep}"
   [[ -f "${init}" ]] || die "missing ${init}"
-  log "Replacing non-public quay.io/minio images with Chainguard"
+  log "Replacing non-public quay.io/minio images with ${minio_img}"
   sed -i.bak \
     -e "s|image: quay.io/minio/minio:.*|image: ${minio_img}|" \
     "${dep}"
