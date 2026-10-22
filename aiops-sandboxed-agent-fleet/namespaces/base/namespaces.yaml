@@ -1,0 +1,29 @@
+# Namespaces created out-of-band (not Helm-managed) so helm uninstall does not
+# delete them — matches upstream scripts/deploy.sh.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshell
+  labels:
+    app.kubernetes.io/part-of: aiops-sandboxed-agent-fleet
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    app.kubernetes.io/part-of: aiops-sandboxed-agent-fleet
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+  labels:
+    app.kubernetes.io/part-of: aiops-sandboxed-agent-fleet
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability-hub
+  labels:
+    app.kubernetes.io/part-of: aiops-sandboxed-agent-fleet

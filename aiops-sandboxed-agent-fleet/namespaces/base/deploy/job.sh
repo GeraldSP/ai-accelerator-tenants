@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# Clone upstream aiops-sandboxed-agent-fleet at a pinned commit and run deploy.sh.
+# Requires cluster-admin-equivalent RBAC (operators, CRDs, multi-ns Helm).
+set -euo pipefail
+
+UPSTREAM_REPO="${UPSTREAM_REPO:-https://github.com/rh-ai-quickstart/aiops-sandboxed-agent-fleet.git}"
+UPSTREAM_REF="${UPSTREAM_REF:-90e7d60155b6f28fccab0658ca3c5b1f3f920d92}"
+WORK_DIR="${WORK_DIR:-/tmp/aiops-sandboxed-agent-fleet}"
+SECRET_NS="${SECRET_NS:-openshell}"
+INFERENCE_SECRET="${INFERENCE_SECRET:-nemoclaw-inference}"
+GHCR_SECRET="${GHCR_SECRET:-nemoclaw-ghcr}"
+
+log()  { printf '[aiops-deploy] %s\n' "$*"; }
+die()  { printf '[aiops-deploy] ERROR: %s\n' "$*" >&2; exit 1; }
+
+install_tools() {
+  log "Installing helm, yq, jq, git, gettext (envsubst)"
+  # helm
+  if ! command -v helm >/dev/null 2>&1; then
+    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  fi
+  # yq (mikefarah)
+  if ! command -v yq >/dev/null 2>&1; then
+    curl -fsSL -o /usr/local/bin/yq \
+      https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    chmod +x /usr/local/bin/yq
+  fi
+  # jq + git + envsubst (gettext)
+  if command -v microdnf >/dev/null 2>&1; then
+    microdnf install -y jq git gettext >/dev/null
+  elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y jq git gettext >/dev/null
+  elif command -v yum >/dev/null 2>&1; then
+    yum install -y jq git gettext >/dev/null
+  else
+    die "No package manager to install jq/git/gettext"
+  fi
+  command -v oc >/dev/null 2>&1 || die "oc not found"
+  command -v helm >/dev/null 2>&1 || die "helm not found"
+  command -v yq >/dev/null 2>&1 || die "yq not found"
+  command -v jq >/dev/null 2>&1 || die "jq not found"
+  command -v envsubst >/dev/null 2>&1 || die "envsubst not found"
+  command -v git >/dev/null 2>&1 || die "git not found"
+}
+
+secret_to_env() {
+  local ns="$1" name="$2" out="$3"
+  local key b64 val
+  if ! oc -n "${ns}" get secret "${name}" >/dev/null 2>&1; then
+    log "Secret ${ns}/${name} not found — deploy will proceed unconfigured for missing keys"
+    return 0
+  fi
+  while IFS= read -r key; do
+    [[ -n "${key}" ]] || continue
+    b64="$(oc -n "${ns}" get secret "${name}" -o "jsonpath={.data.${key}}")"
+    [[ -n "${b64}" ]] || continue
+    val="$(printf '%s' "${b64}" | base64 -d 2>/dev/null || true)"
+    # Escape for dotenv-style sourcing by deploy.sh load_env
+    val="${val//\\/\\\\}"
+    val="${val//\"/\\\"}"
+    printf '%s="%s"\n' "${key}" "${val}" >> "${out}"
+  done < <(oc -n "${ns}" get secret "${name}" -o json | jq -r '.data // {} | keys[]')
+  log "Merged keys from secret ${ns}/${name} into ${out}"
+}
+
+clone_upstream() {
+  rm -rf "${WORK_DIR}"
+  mkdir -p "${WORK_DIR}"
+  log "Cloning ${UPSTREAM_REPO} @ ${UPSTREAM_REF}"
+  git -C "${WORK_DIR}" init
+  git -C "${WORK_DIR}" remote add origin "${UPSTREAM_REPO}"
+  # Fetch the pinned commit (GitHub allows fetch-by-SHA)
+  git -C "${WORK_DIR}" fetch --depth 1 origin "${UPSTREAM_REF}"
+  git -C "${WORK_DIR}" checkout FETCH_HEAD
+}
+
+write_dotenv() {
+  local env_file="${WORK_DIR}/.env"
+  : > "${env_file}"
+  secret_to_env "${SECRET_NS}" "${INFERENCE_SECRET}" "${env_file}"
+  secret_to_env "${SECRET_NS}" "${GHCR_SECRET}" "${env_file}"
+  # Sensible defaults when secret omitted keys
+  grep -q '^DEPLOY_DEMO_APP=' "${env_file}" 2>/dev/null || echo 'DEPLOY_DEMO_APP="true"' >> "${env_file}"
+  grep -q '^PROVISION_AGENT=' "${env_file}" 2>/dev/null || echo 'PROVISION_AGENT="false"' >> "${env_file}"
+  log "Wrote ${env_file}"
+}
+
+main() {
+  install_tools
+  clone_upstream
+  write_dotenv
+  log "Running upstream deploy.sh (operators + Helm + demo app + fleet)"
+  cd "${WORK_DIR}"
+  chmod +x scripts/*.sh scripts/lib/*.sh 2>/dev/null || true
+  ./scripts/deploy.sh
+  log "Deploy finished"
+}
+
+main "$@"

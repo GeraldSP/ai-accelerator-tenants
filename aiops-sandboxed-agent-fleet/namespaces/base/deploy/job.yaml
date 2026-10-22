@@ -1,0 +1,67 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-aiops-sandboxed-agent-fleet-deploy
+  namespace: openshell
+  labels:
+    app.kubernetes.io/name: aiops-sandboxed-agent-fleet-deploy
+    app.kubernetes.io/part-of: aiops-sandboxed-agent-fleet
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  ttlSecondsAfterFinished: 86400
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: aiops-sandboxed-agent-fleet-deploy
+        app.kubernetes.io/part-of: aiops-sandboxed-agent-fleet
+    spec:
+      serviceAccountName: job-aiops-sandboxed-agent-fleet-deploy
+      restartPolicy: Never
+      # Prefer capacity from lab-infra m6i pool when present; otherwise any worker.
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 50
+              preference:
+                matchExpressions:
+                  - key: workload.openshift.io/rhaii-cpu
+                    operator: In
+                    values: ["true"]
+      containers:
+        - name: deploy
+          image: registry.redhat.io/openshift4/ose-cli-rhel9
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: UPSTREAM_REPO
+              value: https://github.com/rh-ai-quickstart/aiops-sandboxed-agent-fleet.git
+            # Pin to inspected upstream commit (refresh when re-vendor/re-pin).
+            - name: UPSTREAM_REF
+              value: "90e7d60155b6f28fccab0658ca3c5b1f3f920d92"
+            - name: SECRET_NS
+              value: openshell
+            - name: INFERENCE_SECRET
+              value: nemoclaw-inference
+            - name: GHCR_SECRET
+              value: nemoclaw-ghcr
+            - name: HOME
+              value: /tmp
+          command:
+            - /bin/bash
+            - /scripts/job.sh
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+      volumes:
+        - name: scripts
+          configMap:
+            name: job-aiops-sandboxed-agent-fleet-deploy
+            defaultMode: 0755

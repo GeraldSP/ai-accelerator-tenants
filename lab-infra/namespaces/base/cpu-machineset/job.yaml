@@ -21,11 +21,13 @@ spec:
               # OpenShift system reserved, below the rhaii-cpu request of 8 CPU.
               value: "m6i.4xlarge"
             - name: MACHINE_REPLICAS
-              value: "1"
+              # 2 nodes: RHAII (8 CPU) + AIOps fleet (Tempo/Loki/OpenShell) share
+              # this AVX512 pool when general workers are undersized.
+              value: "2"
             - name: MACHINE_MIN
               value: "1"
             - name: MACHINE_MAX
-              value: "2"
+              value: "3"
             - name: NODE_VOLUME_SIZE
               value: "100"
             - name: NAMESPACE

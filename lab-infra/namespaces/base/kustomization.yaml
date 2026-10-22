@@ -3,4 +3,5 @@ kind: Kustomization
 
 resources:
   - cpu-machineset
+  - gpu-machineset
   - storage

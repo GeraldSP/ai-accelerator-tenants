@@ -10,9 +10,25 @@ data:
   defaultStorageClass: gp3-csi
   rhaiiModelCachePvc: "20Gi"
   gatewayDataPvc: "1Gi"
+  aiopsMinioPvc: "5Gi"
+  aiopsTempoStorage: "15Gi"
+  aiopsGrafanaPvc: "2Gi"
+  aiopsVerdaccioPvc: "2Gi"
   notes: |
-    Helpdesk email triage (RHAII 3.5 CPU) expects a default StorageClass that can
-    bind RWO PVCs. On this AWS cluster use gp3-csi (already the cluster default).
-    PVCs created by the quickstart:
+    Default StorageClass: gp3-csi (AWS). All tenant PVCs are RWO.
+
+    Helpdesk email triage (RHAII 3.5 CPU):
       - rhaii-model-cache: 20Gi (model weights)
       - gateway-data: 1Gi (ticket vault / file-watcher state)
+      Nodes: AVX512 MachineSet (m6i.4xlarge), labeled workload.openshift.io/rhaii-cpu.
+
+    AIOps sandboxed agent fleet:
+      Observability / OpenShell PVCs:
+        - minio-observability-storage: 5Gi in observability-hub
+        - TempoStack storage: 15Gi
+        - grafana: 2Gi in monitoring
+        - Verdaccio skill registry: 2Gi in openshell
+      In-cluster LLM (OpenShift AI KServe RawDeployment):
+        - InferenceService aiops-llm in aiops-inference (Llama 3.1 8B FP8 modelcar)
+        - Nodes: cheap GPU MachineSet g4dn.2xlarge (1× T4), tainted nvidia.com/gpu=NoSchedule
+        - Endpoint: http://aiops-llm-predictor.aiops-inference.svc.cluster.local:8000/v1

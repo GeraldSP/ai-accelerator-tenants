@@ -1,3 +1,7 @@
 # Local Hugging Face token (never commit)
 **/secrets/hf-token.env
 **/hf-token.env
+
+# Local AIOps fleet inference credentials (never commit)
+**/secrets/inference.env
+**/inference.env

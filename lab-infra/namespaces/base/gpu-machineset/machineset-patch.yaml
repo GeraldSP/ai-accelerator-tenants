@@ -1,0 +1,17 @@
+apiVersion: machine.openshift.io/v1beta1
+kind: MachineSet
+metadata:
+  labels:
+    cluster-api/accelerator: "nvidia-gpu"
+    workload.openshift.io/aiops-gpu: "true"
+spec:
+  template:
+    spec:
+      metadata:
+        labels:
+          node-role.kubernetes.io/gpu: ""
+          cluster-api/accelerator: "nvidia-gpu"
+          workload.openshift.io/aiops-gpu: "true"
+      taints:
+        - key: nvidia.com/gpu
+          effect: NoSchedule

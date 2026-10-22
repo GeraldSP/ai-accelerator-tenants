@@ -1,0 +1,41 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: aiops-llm
+  namespace: aiops-inference
+  annotations:
+    openshift.io/display-name: AIOps fleet LLM (Llama 3.1 8B FP8)
+    security.opendatahub.io/enable-auth: "false"
+    serving.kserve.io/deploymentMode: RawDeployment
+    opendatahub.io/hardware-profile-name: nvidia-gpu-serving
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    argocd.argoproj.io/sync-wave: "5"
+  labels:
+    app.kubernetes.io/part-of: aiops-sandboxed-agent-fleet
+    opendatahub.io/dashboard: "true"
+spec:
+  predictor:
+    automountServiceAccountToken: false
+    minReplicas: 1
+    maxReplicas: 1
+    deploymentStrategy:
+      type: Recreate
+    tolerations:
+      - effect: NoSchedule
+        key: nvidia.com/gpu
+        operator: Exists
+    model:
+      modelFormat:
+        name: vLLM
+      name: ""
+      runtime: rhaiis-cuda
+      storageUri: oci://registry.redhat.io/rhelai1/modelcar-llama-3-1-8b-instruct-fp8-dynamic:1.5
+      resources:
+        requests:
+          cpu: "4"
+          memory: 8Gi
+          nvidia.com/gpu: "1"
+        limits:
+          cpu: "4"
+          memory: 16Gi
+          nvidia.com/gpu: "1"

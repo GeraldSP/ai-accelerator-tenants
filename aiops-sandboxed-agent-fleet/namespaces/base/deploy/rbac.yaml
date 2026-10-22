@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: job-aiops-sandboxed-agent-fleet-deploy
+  namespace: openshell
+  labels:
+    app.kubernetes.io/part-of: aiops-sandboxed-agent-fleet
+---
+# Upstream deploy.sh needs cluster-admin: OLM Subscriptions, CRDs, ClusterRoles,
+# SCC grants, multi-namespace Helm, agent-sandbox CRD, User Workload Monitoring.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: job-aiops-sandboxed-agent-fleet-deploy
+  labels:
+    app.kubernetes.io/part-of: aiops-sandboxed-agent-fleet
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: job-aiops-sandboxed-agent-fleet-deploy
+    namespace: openshell
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: job-aiops-sandboxed-agent-fleet-deploy-secrets
+  namespace: openshell
+  labels:
+    app.kubernetes.io/part-of: aiops-sandboxed-agent-fleet
+rules:
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: job-aiops-sandboxed-agent-fleet-deploy-secrets
+  namespace: openshell
+  labels:
+    app.kubernetes.io/part-of: aiops-sandboxed-agent-fleet
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: job-aiops-sandboxed-agent-fleet-deploy-secrets
+subjects:
+  - kind: ServiceAccount
+    name: job-aiops-sandboxed-agent-fleet-deploy
+    namespace: openshell
