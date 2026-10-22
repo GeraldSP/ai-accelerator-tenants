@@ -6,7 +6,7 @@ External tenant workloads for [ai-accelerator](https://github.com/GeraldSP/ai-ac
 
 | Tenant | Path | Purpose |
 |--------|------|---------|
-| `lab-infra` | `lab-infra/namespaces/overlays/summit-connect-chile` | AVX512 CPU MachineSet (`m6i.4xlarge`) + cheap GPU MachineSet (`g4dn.2xlarge` T4) + storage expectations |
+| `lab-infra` | `lab-infra/namespaces/overlays/summit-connect-chile` | AVX512 CPU MachineSet (`m6i.4xlarge`) + GPU MachineSet (`g5.2xlarge` A10G for RHAIIS) + storage expectations |
 | `helpdesk-email-triage-demo` | `helpdesk-email-triage-demo/namespaces/overlays/summit-connect-chile` | Helpdesk email triage with RHAII 3.5 CPU (vendored from [rh-ai-quickstart/helpdesk-email-triage](https://github.com/rh-ai-quickstart/helpdesk-email-triage)) |
 | `aiops-sandboxed-agent-fleet` | `aiops-sandboxed-agent-fleet/namespaces/overlays/summit-connect-chile` | AIOps OpenShell/OpenClaw fleet + in-cluster OpenShift AI LLM (`aiops-llm` on GPU) |
 
@@ -37,7 +37,7 @@ Argo syncs `nemoclaw-inference` pointing at the OpenShift AI InferenceService:
 
 `http://aiops-llm-predictor.aiops-inference.svc.cluster.local:8000/v1`
 
-- GPU: lab-infra `g4dn.2xlarge` (T4), taint `nvidia.com/gpu`
+- GPU: lab-infra `g5.2xlarge` (A10G), taint `nvidia.com/gpu`
 - Model: Llama 3.1 8B Instruct FP8 modelcar (`aiops-llm`), auth disabled
 - No NVIDIA `nvapi` key required for the default path
 

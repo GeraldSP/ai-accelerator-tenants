@@ -30,5 +30,6 @@ data:
         - Verdaccio skill registry: 2Gi in openshell
       In-cluster LLM (OpenShift AI KServe RawDeployment):
         - InferenceService aiops-llm in aiops-inference (Llama 3.1 8B FP8 modelcar)
-        - Nodes: cheap GPU MachineSet g4dn.2xlarge (1× T4), tainted nvidia.com/gpu=NoSchedule
+        - Nodes: GPU MachineSet g5.2xlarge (1× A10G 24 GiB), tainted nvidia.com/gpu=NoSchedule
+          (RHAIIS vLLM 3.2.4 / demo ServingRuntime is not compatible with T4)
         - Endpoint: http://aiops-llm-predictor.aiops-inference.svc.cluster.local:8000/v1

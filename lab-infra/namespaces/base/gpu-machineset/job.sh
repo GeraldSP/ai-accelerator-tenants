@@ -12,9 +12,8 @@ ocp_aws_cluster() {
 }
 
 ocp_aws_create_aiops_gpu_machineset() {
-  # g4dn.2xlarge: 1× T4 (16 GiB) + 32 GiB host RAM — practical for small vLLM;
-  # g4dn.xlarge (16 GiB host) is often too tight for vLLM.
-  local instance_type="${INSTANCE_TYPE:-g4dn.2xlarge}"
+  # g5.2xlarge: 1× A10G (24 GiB) — required for RHAIIS vLLM 3.2.4 (T4 hits CUDA 803).
+  local instance_type="${INSTANCE_TYPE:-g5.2xlarge}"
   local replicas="${MACHINE_REPLICAS:-1}"
   local volume_size="${NODE_VOLUME_SIZE:-100}"
   local instance_family="${instance_type%%.*}"

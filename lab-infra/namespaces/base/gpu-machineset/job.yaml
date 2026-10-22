@@ -17,8 +17,9 @@ spec:
           image: registry.redhat.io/openshift4/ose-cli-rhel9
           env:
             - name: INSTANCE_TYPE
-              # 1× NVIDIA T4 (16 GiB) + 32 GiB host — cheap single-GPU for small vLLM
-              value: "g4dn.2xlarge"
+              # A10G (Ampere) — RHAIIS vLLM 3.2.4 fails on T4 (sm_75) with CUDA Error 803.
+              # Matches genai tutorial / demo-friendly single-GPU size.
+              value: "g5.2xlarge"
             - name: MACHINE_REPLICAS
               value: "1"
             - name: MACHINE_MIN
