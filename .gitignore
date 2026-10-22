@@ -1,0 +1,3 @@
+# Local Hugging Face token (never commit)
+**/secrets/hf-token.env
+**/hf-token.env

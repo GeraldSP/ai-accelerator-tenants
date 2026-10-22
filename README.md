@@ -15,10 +15,15 @@ Pointer Applications in the core repo (`tenants/<id>/remote/`) sync these paths 
 
 `helpdesk-email-triage-demo/vendor/` contains a copy of the upstream `deploy/openshift` tree plus `sample_emails` (relocated under the `rhaii-demo` overlay so Kustomize loadRestrictor succeeds in Argo CD). Refresh by re-copying from upstream when needed.
 
-## One-time secret (helpdesk)
+## Hugging Face secret (helpdesk) — gitignored
+
+Token lives in `helpdesk-email-triage-demo/namespaces/base/secrets/hf-token.env`
+(listed in `.gitignore`; never commit). Argo CD does not sync this secret.
 
 ```bash
-oc -n helpdesk-email-triage create secret generic hf-secret \
-  --from-literal=HF_TOKEN='<your-huggingface-token>' \
-  --dry-run=client -o yaml | oc apply -f -
+cp helpdesk-email-triage-demo/namespaces/base/secrets/hf-token.env.example \
+   helpdesk-email-triage-demo/namespaces/base/secrets/hf-token.env
+# edit HF_TOKEN=...
+chmod +x helpdesk-email-triage-demo/scripts/apply-hf-secret.sh
+./helpdesk-email-triage-demo/scripts/apply-hf-secret.sh
 ```
