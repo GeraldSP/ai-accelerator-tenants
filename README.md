@@ -6,7 +6,7 @@ External tenant workloads for [ai-accelerator](https://github.com/GeraldSP/ai-ac
 
 | Tenant | Path | Purpose |
 |--------|------|---------|
-| `lab-infra` | `lab-infra/namespaces/overlays/summit-connect-chile` | AVX512 CPU MachineSet (`m6i.2xlarge`) + storage expectations for RHAII |
+| `lab-infra` | `lab-infra/namespaces/overlays/summit-connect-chile` | AVX512 CPU MachineSet (`m6i.4xlarge`) + storage expectations for RHAII |
 | `helpdesk-email-triage-demo` | `helpdesk-email-triage-demo/namespaces/overlays/summit-connect-chile` | Helpdesk email triage with RHAII 3.5 CPU (vendored from [rh-ai-quickstart/helpdesk-email-triage](https://github.com/rh-ai-quickstart/helpdesk-email-triage)) |
 
 Pointer Applications in the core repo (`tenants/<id>/remote/`) sync these paths via Argo CD.

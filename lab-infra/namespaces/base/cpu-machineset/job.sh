@@ -13,7 +13,7 @@ ocp_aws_cluster() {
 }
 
 ocp_aws_create_rhaii_cpu_machineset() {
-  local instance_type="${INSTANCE_TYPE:-m6i.2xlarge}"
+  local instance_type="${INSTANCE_TYPE:-m6i.4xlarge}"
   local replicas="${MACHINE_REPLICAS:-1}"
   local volume_size="${NODE_VOLUME_SIZE:-100}"
   local instance_family="${instance_type%%.*}"
