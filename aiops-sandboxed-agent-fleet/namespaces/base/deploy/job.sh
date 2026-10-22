@@ -105,8 +105,30 @@ write_dotenv() {
   log "Wrote ${env_file}"
 }
 
+# A killed/retried deploy Job leaves Helm releases in pending-install/upgrade,
+# so the next run fails with "another operation is in progress".
+clear_stuck_helm_releases() {
+  local ns release status
+  for ns_release in "monitoring:nemoclaw-monitoring" "openshell:nemoclaw"; do
+    ns="${ns_release%%:*}"
+    release="${ns_release##*:}"
+    status="$(helm -n "${ns}" status "${release}" -o json 2>/dev/null | jq -r '.info.status // empty' || true)"
+    case "${status}" in
+      pending-install|pending-upgrade|pending-rollback)
+        log "Clearing stuck Helm release ${ns}/${release} (status=${status})"
+        helm -n "${ns}" uninstall "${release}" --wait --timeout 3m || \
+          oc -n "${ns}" delete secret -l "name=${release},owner=helm,status=${status}" --ignore-not-found
+        ;;
+      *)
+        log "Helm ${ns}/${release}: ${status:-absent}"
+        ;;
+    esac
+  done
+}
+
 main() {
   install_tools
+  clear_stuck_helm_releases
   clone_upstream
   patch_minio_images
   write_dotenv
