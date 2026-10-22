@@ -4,11 +4,11 @@ set -euo pipefail
 
 ocp_aws_cluster() {
   if oc -n openshift-machine-api get machinesets.machine.openshift.io -o name 2>/dev/null | grep -q worker; then
-    echo "OpenShift AWS cluster detected"
+    echo "OpenShift AWS cluster detected" >&2
     return 0
   fi
 
-  echo "No worker MachineSets found in openshift-machine-api"
+  echo "No worker MachineSets found in openshift-machine-api" >&2
   return 1
 }
 
@@ -30,33 +30,34 @@ ocp_aws_create_rhaii_cpu_machineset() {
 
   if oc -n openshift-machine-api get machinesets.machine.openshift.io -o name | grep -q "${instance_family}"; then
     machine_set_name=$(oc -n openshift-machine-api get machinesets.machine.openshift.io -o name | grep "${instance_family}" | head -n1 | sed 's@.*/@@')
-    echo "Exists: machineset ${machine_set_name}"
+    echo "Exists: machineset ${machine_set_name}" >&2
   else
-    echo "Creating: machineset ${machine_set_name} (${instance_type}, replicas=${replicas})"
+    echo "Creating: machineset ${machine_set_name} (${instance_type}, replicas=${replicas})" >&2
     oc -n openshift-machine-api get "${machine_set}" -o yaml | \
       sed -e "s/^  name: ${source_name}$/  name: ${machine_set_name}/" \
           -e "s/${source_name}/${machineset_label}/g" \
           -e 's/instanceType: .*/instanceType: '"${instance_type}"'/' \
           -e 's/replicas: .*/replicas: '"${replicas}"'/' | \
-      oc apply -f -
+      oc apply -f - >&2
   fi
 
   if [[ -f "${patch_file}" ]]; then
-    echo "Patching machinesets.machine.openshift.io/${machine_set_name} with ${patch_file}"
+    echo "Patching machinesets.machine.openshift.io/${machine_set_name} with ${patch_file}" >&2
     oc -n openshift-machine-api patch "machinesets.machine.openshift.io/${machine_set_name}" \
-      --type=merge --patch-file "${patch_file}"
+      --type=merge --patch-file "${patch_file}" >&2
   fi
 
   oc -n openshift-machine-api patch "machinesets.machine.openshift.io/${machine_set_name}" \
     --type=merge \
-    --patch "{\"spec\":{\"replicas\":${replicas},\"template\":{\"spec\":{\"providerSpec\":{\"value\":{\"instanceType\":\"${instance_type}\"}}}}}}"
+    --patch "{\"spec\":{\"replicas\":${replicas},\"template\":{\"spec\":{\"providerSpec\":{\"value\":{\"instanceType\":\"${instance_type}\"}}}}}}" >&2
 
-  echo "Patching machinesets.machine.openshift.io/${machine_set_name} blockDevices volumeSize to ${volume_size}"
+  echo "Patching machinesets.machine.openshift.io/${machine_set_name} blockDevices volumeSize to ${volume_size}" >&2
   oc -n openshift-machine-api patch "machinesets.machine.openshift.io/${machine_set_name}" \
     --type=json \
-    --patch "[{\"op\":\"replace\",\"path\":\"/spec/template/spec/providerSpec/value/blockDevices/0/ebs/volumeSize\",\"value\":${volume_size}}]"
+    --patch "[{\"op\":\"replace\",\"path\":\"/spec/template/spec/providerSpec/value/blockDevices/0/ebs/volumeSize\",\"value\":${volume_size}}]" >&2
 
-  echo "${machine_set_name}"
+  # Only the MachineSet name goes to stdout (captured by caller)
+  printf '%s\n' "${machine_set_name}"
 }
 
 ocp_create_machineset_autoscale() {
@@ -64,7 +65,7 @@ ocp_create_machineset_autoscale() {
   local machine_max="${2:-2}"
   local machine_set="${3:?machine set name is required}"
 
-  cat <<YAML | oc apply -f -
+  cat <<YAML | oc apply -f - >&2
 apiVersion: autoscaling.openshift.io/v1beta1
 kind: MachineAutoscaler
 metadata:

@@ -1,0 +1,90 @@
+# OpenShift manifests
+
+Kustomize layouts for the helpdesk email triage stack.
+
+**Deploy commands and decision guide:** [README Track 1 (OpenShift RHAII)](../../README.md#track-1-deploy-to-openshift-rhaii-cpu) · **Runbook:** [docs/deploy-openshift.md](../../docs/deploy-openshift.md)
+
+## Layout
+
+```
+deploy/openshift/
+├── base/                    # Deployments, Services, PVC, ConfigMap, Secret
+├── components/
+│   ├── rhaii-cpu/           # RHAII 3.5 CPU (vllm-cpu-rhel9) — 16 cores / 16 Gi
+│   ├── rhaii-cpu-small/     # Resource patch: 4 req / 8 limit cores, 8 Gi, KVCACHE=4
+│   ├── routes/              # OpenShift Routes (edge TLS)
+│   ├── route-reader/        # ServiceAccount for Route auto-discovery
+│   ├── network-policy/      # Namespace NetworkPolicies + GuideLLM egress
+│   └── hardening/           # REQUIRE_SECRETS, OAuth on Routes, scoped dashboard secrets
+└── overlays/
+    ├── helpdesk-email-triage/       # Mock — existing project
+    ├── helpdesk-email-triage-rhaii/ # RHAII — existing project
+    ├── mock-demo/                   # Mock — creates Namespace
+    ├── rhaii-demo/                  # RHAII — creates Namespace
+    ├── gateway-only/
+    ├── external-inference/
+    ├── hardened/                    # Mock + hardening
+    └── hardened-rhaii/              # RHAII + hardening
+```
+
+Images default to `quay.io/rh-ai-quickstart/helpdesk-*:latest`. Pin with `IMAGE_TAG=v1.2.3 make deploy-openshift`. RHAII image: `registry.redhat.io/rhaii/vllm-cpu-rhel9:3.5.0-1786546771`.
+
+## Overlay quick reference
+
+| Overlay | Inference pod |
+|---|---|
+| `helpdesk-email-triage`, `mock-demo`, `hardened` | `inference-mock` |
+| `helpdesk-email-triage-rhaii`, `rhaii-demo`, `hardened-rhaii` | `rhaii-cpu` |
+
+`OVERLAY=.../hardened` deploys mock unless `INFERENCE=rhaii` (remapped to `hardened-rhaii`).
+
+## Validate locally
+
+```bash
+make validate-manifests
+```
+
+## Hardening (`components/hardening/`)
+
+Used by `hardened` and `hardened-rhaii` overlays:
+
+| Patch | Effect |
+|---|---|
+| `patch-require-secrets.yaml` | `REQUIRE_SECRETS=1` — non-demo secrets required; SMTP disabled |
+| `patch-route-gateway-oauth.yaml` | OpenShift OAuth on the gateway Route |
+| `patch-route-dashboard-oauth.yaml` | OpenShift OAuth on the dashboard Route |
+| `patch-dashboard-scope-secrets.yaml` | Dashboard pod gets `INGEST_API_KEY` only (vault via `X-Ingest-Key`) |
+
+## Inference resource sizing (`components/rhaii-cpu-small/`)
+
+The default `rhaii-cpu` component requests **8 cores / 16 Gi** and limits to **16 cores / 16 Gi** with `VLLM_CPU_KVCACHE_SPACE=8`. For nodes with fewer resources, add `rhaii-cpu-small` after `rhaii-cpu` in the overlay's `resources:` list to patch it down:
+
+| Setting | Default (`rhaii-cpu`) | Small (`+ rhaii-cpu-small`) |
+|---|---|---|
+| CPU request / limit | 8 / 16 | 4 / 8 |
+| Memory request / limit | 16 Gi / 16 Gi | 8 Gi / 8 Gi |
+| `VLLM_CPU_KVCACHE_SPACE` | 8 | 4 |
+
+```yaml
+# In your overlay's kustomization.yaml
+resources:
+  - ../../base
+  - ../../components/rhaii-cpu
+  - ../../components/rhaii-cpu-small   # add this line
+  - ../../components/routes
+  - ../../components/route-reader
+```
+
+`rhaii-cpu-small` is a patch-only component — it has no standalone resources and must always follow `rhaii-cpu`.
+
+## GuideLLM benchmark
+
+`make guidellm-openshift` benchmarks **RHAII only** (`rhaii-cpu`). It applies `components/network-policy/allow-guidellm-to-inference.yaml`, runs `registry.redhat.io/rhai/guidellm-rhel9:3.5.0-1787154406` (`guidellm run` — JSON + HTML in one Job), and copies results to `./results/guidellm-openshift/`. Requires the same `registry.redhat.io` pull secret as RHAII CPU. Not available on mock-only overlays. See [docs/deploy-openshift.md](../../docs/deploy-openshift.md#load-test-inference-guidellm).
+
+## Notes
+
+- Gateway uses a 1 Gi ReadWriteOnce PVC (`Recreate` strategy); ticket JSON is not encrypted at rest.
+- Gateway readiness probe: `GET /health` (init container waits for inference `/models`). `GET /health/ready` for deeper checks after republishing the gateway image.
+- RHAII needs `hf-secret` + `redhat-registry-pull` and workers with 16 GiB+ allocatable RAM.
+- NetworkPolicies ship with demo overlays; GuideLLM adds egress to inference when benchmarking.
+- Rebuild and push gateway/UI images after entrypoint changes.

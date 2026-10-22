@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: helpdesk-routes
+  labels:
+    app.kubernetes.io/part-of: helpdesk-email-triage
+data:
+  # Optional manual override only. By default, gateway and dashboard entrypoints
+  # discover the agent-dashboard Route hostname from the OpenShift API at startup.
+  DASHBOARD_ORIGIN: http://localhost:8501

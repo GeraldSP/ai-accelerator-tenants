@@ -1,0 +1,38 @@
+# Podman Quadlet container unit — place in ~/.config/containers/systemd/
+#
+# Build the image first:
+#   podman build -f email-gateway/Containerfile -t localhost/helpdesk-email-gateway:prod .
+#
+# Enable:
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now email-gateway.service
+
+[Unit]
+Description=Helpdesk Email Gateway
+After=rhaii-cpu-engine.service
+Requires=rhaii-cpu-engine.service
+
+[Container]
+Image=localhost/helpdesk-email-gateway:prod
+# Local `podman build` tag — do not treat localhost as a remote registry.
+Pull=never
+ContainerName=rhaii-email-gateway
+PublishPort=8080:8080
+PublishPort=3025:3025
+Environment=VLLM_BASE_URL=http://rhaii-cpu-engine:8000/v1
+Environment=VLLM_ENDPOINT=http://rhaii-cpu-engine:8000/v1/chat/completions
+Environment=MODEL_NAME=Qwen/Qwen2.5-1.5B-Instruct
+Environment=GATEWAY_MODE=FILE_WATCHER
+Environment=EMAIL_INPUT_DIR=/app/input_emails
+Environment=TICKET_DATA_DIR=/app/data
+EnvironmentFile=%h/.config/helpdesk/secrets.env
+Volume=%h/helpdesk/sample_emails:/app/input_emails:Z
+Volume=gateway-data.volume:/app/data:Z
+Network=helpdesk.network
+
+[Service]
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: helpdesk-kind-test
+
+resources:
+  - ../../../openshift/base
+
+patches:
+  - path: patch-drop-namespace.yaml
+  - path: patch-kind.yaml
+
+configMapGenerator:
+  - name: sample-emails
+    files:
+      - ../../../../sample_emails/01-billing-double-charge.eml
+      - ../../../../sample_emails/02-tech-support-vpn.eml
+      - ../../../../sample_emails/03-account-access-lockout.eml
+      - ../../../../sample_emails/04-general-feedback.eml
+      - ../../../../sample_emails/05-healthcare-billing.eml
+      - ../../../../sample_emails/06-hr-payroll.eml
+      - ../../../../sample_emails/07-gdpr-deletion.eml
+
+images:
+  - name: quay.io/rh-ai-quickstart/helpdesk-email-triage-email-gateway
+    newName: helpdesk-email-triage-email-gateway
+    newTag: ci
+  - name: quay.io/rh-ai-quickstart/helpdesk-email-triage-ui
+    newName: helpdesk-email-triage-ui
+    newTag: ci
+  - name: quay.io/rh-ai-quickstart/helpdesk-email-triage-inference-mock
+    newName: helpdesk-email-triage-inference-mock
+    newTag: ci
