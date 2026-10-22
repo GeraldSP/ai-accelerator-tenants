@@ -1,0 +1,97 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: job-patch-rhaii-affinity
+  namespace: helpdesk-email-triage
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: job-patch-rhaii-affinity
+  namespace: helpdesk-email-triage
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+rules:
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - get
+      - patch
+      - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: job-patch-rhaii-affinity
+  namespace: helpdesk-email-triage
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: job-patch-rhaii-affinity
+subjects:
+  - kind: ServiceAccount
+    name: job-patch-rhaii-affinity
+    namespace: helpdesk-email-triage
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: job-patch-rhaii-affinity
+  namespace: helpdesk-email-triage
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+data:
+  patch.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+    NS=helpdesk-email-triage
+    echo "Waiting for deployment/rhaii-cpu in ${NS}..."
+    for i in $(seq 1 60); do
+      if oc -n "${NS}" get deployment rhaii-cpu >/dev/null 2>&1; then
+        break
+      fi
+      sleep 10
+    done
+    oc -n "${NS}" get deployment rhaii-cpu >/dev/null
+    echo "Patching rhaii-cpu nodeSelector for RHAII CPU workers"
+    oc -n "${NS}" patch deployment rhaii-cpu --type=merge -p '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/rhaii-cpu":""}}}}}'
+    echo "Done."
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-patch-rhaii-affinity
+  namespace: helpdesk-email-triage
+  labels:
+    app.kubernetes.io/name: patch-rhaii-affinity
+    app.kubernetes.io/part-of: helpdesk-email-triage-demo
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  ttlSecondsAfterFinished: 86400
+  backoffLimit: 6
+  template:
+    spec:
+      serviceAccountName: job-patch-rhaii-affinity
+      restartPolicy: Never
+      containers:
+        - name: patch
+          image: registry.redhat.io/openshift4/ose-cli-rhel9
+          command:
+            - /bin/bash
+            - /scripts/patch.sh
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+      volumes:
+        - name: scripts
+          configMap:
+            name: job-patch-rhaii-affinity
+            defaultMode: 0755

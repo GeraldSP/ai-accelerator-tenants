@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: helpdesk-email-triage
+  labels:
+    app.kubernetes.io/part-of: helpdesk-email-triage
+    opendatahub.io/dashboard: "true"
