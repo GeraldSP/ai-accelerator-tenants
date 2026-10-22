@@ -20,6 +20,9 @@ spec:
     maxReplicas: 1
     deploymentStrategy:
       type: Recreate
+    # registry.redhat.io RHAIIS + modelcar (copied from openshift-config/pull-secret)
+    imagePullSecrets:
+      - name: redhat-registry-pull
     tolerations:
       - effect: NoSchedule
         key: nvidia.com/gpu

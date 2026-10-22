@@ -24,11 +24,21 @@ data:
     s["metadata"]["labels"]={"app.kubernetes.io/part-of":"aiops-sandboxed-agent-fleet"}
     json.dump(s, sys.stdout)
     ' | oc apply -f -
-    # Default SA needs the pull secret for RHAIIS + modelcar images
-    oc -n "${NS}" patch serviceaccount default --type=json \
-      -p '[{"op":"add","path":"/imagePullSecrets/-","value":{"name":"redhat-registry-pull"}}]' \
-      2>/dev/null || oc -n "${NS}" patch serviceaccount default --type=merge \
-      -p '{"imagePullSecrets":[{"name":"redhat-registry-pull"}]}'
+    # Default SA + common KServe predictor SA need the pull secret for RHAIIS + modelcar
+    for sa in default; do
+      echo "Ensuring imagePullSecret redhat-registry-pull on SA/${sa}"
+      oc -n "${NS}" get sa "${sa}" -o json | python3 -c '
+    import json,sys
+    sa=json.load(sys.stdin)
+    for k in ("resourceVersion","uid","creationTimestamp","managedFields","ownerReferences","selfLink","generation"):
+        sa.get("metadata",{}).pop(k, None)
+    ips=sa.setdefault("imagePullSecrets", [])
+    names={i.get("name") for i in ips if isinstance(i, dict)}
+    if "redhat-registry-pull" not in names:
+        ips.append({"name":"redhat-registry-pull"})
+    json.dump(sa, sys.stdout)
+    ' | oc apply -f -
+    done
     echo "Done."
 ---
 apiVersion: batch/v1
@@ -41,6 +51,8 @@ metadata:
     app.kubernetes.io/part-of: aiops-sandboxed-agent-fleet
   annotations:
     argocd.argoproj.io/sync-wave: "0"
+    # Recreate Job on sync if prior run hit backoffLimit
+    argocd.argoproj.io/sync-options: Force=true,Replace=true
 spec:
   ttlSecondsAfterFinished: 86400
   backoffLimit: 3
